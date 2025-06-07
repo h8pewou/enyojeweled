@@ -2,7 +2,7 @@
   "name": "enyojeweled",
   "version": "1.0.0",
   "dependencies": {
-    "enyo": "enyojs/enyo#2.5.1",
-    "enyo-webos": "enyojs/enyo-webos#2.5.1"
+    "enyo": "enyojs/enyo#2.7.0",
+    "enyo-webos": "enyojs/enyo-webos#2.7.0"
   }
 } 

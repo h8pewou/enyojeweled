@@ -1,7 +1,7 @@
 // Register all kinds in dependency order
 enyo.kind({
     name: 'Gem',
-    kind: enyo.Control,
+    kind: 'enyo.Control',
     classes: 'gem',
     
     published: {
@@ -11,31 +11,100 @@ enyo.kind({
         selected: false
     },
     
+    events: {
+        onGemSelect: ''
+    },
+    
+    handlers: {
+        ontap: 'handleTap'
+    },
+    
     create: function() {
         this.inherited(arguments);
         this.addClass(this.gemType);
+        console.log('Gem created:', {
+            row: this.row,
+            col: this.col,
+            type: this.gemType
+        });
+    },
+    
+    handleTap: function(inSender, inEvent) {
+        console.log('Gem tapped:', {
+            row: this.row,
+            col: this.col,
+            type: this.gemType,
+            selected: this.selected,
+            event: inEvent
+        });
+        
+        // Bubble the event up
+        this.bubble('onGemSelect', {gem: this});
+        return true;
     },
     
     gemTypeChanged: function(oldValue) {
+        console.log('Gem type changed:', {
+            row: this.row,
+            col: this.col,
+            oldType: oldValue,
+            newType: this.gemType
+        });
         this.removeClass(oldValue);
         this.addClass(this.gemType);
     },
     
     selectedChanged: function() {
+        console.log('Gem selection changed:', {
+            row: this.row,
+            col: this.col,
+            selected: this.selected
+        });
         this.addRemoveClass('selected', this.selected);
     },
     
     playMatchAnimation: function() {
+        console.log('Playing match animation:', {
+            row: this.row,
+            col: this.col
+        });
         this.addClass('matching');
-        setTimeout(function() {
+        enyo.asyncMethod(this, function() {
             this.removeClass('matching');
-        }.bind(this), 500);
+        }, 500);
+    },
+    
+    startSwapAnimation: function() {
+        console.log('Starting swap animation:', {
+            row: this.row,
+            col: this.col
+        });
+        this.addClass('swapping');
+    },
+    
+    endSwapAnimation: function() {
+        console.log('Ending swap animation:', {
+            row: this.row,
+            col: this.col
+        });
+        this.removeClass('swapping');
+    },
+    
+    startFallAnimation: function() {
+        console.log('Starting fall animation:', {
+            row: this.row,
+            col: this.col
+        });
+        this.addClass('falling');
+        enyo.asyncMethod(this, function() {
+            this.removeClass('falling');
+        }, 500);
     }
 });
 
 enyo.kind({
     name: 'Grid',
-    kind: enyo.Control,
+    kind: 'enyo.Control',
     classes: 'grid game-grid',
     
     published: {
@@ -47,69 +116,101 @@ enyo.kind({
         onScoreUpdate: ''
     },
     
+    components: [
+        {name: 'gridContainer', classes: 'grid-container'}
+    ],
+    
+    handlers: {
+        onGemSelect: 'handleGemSelect'
+    },
+    
     create: function() {
         this.inherited(arguments);
-        this.createGrid();
+        console.log('Grid created');
         this.selectedGem = null;
-        // Check for initial matches
+        this.grid = [];
+        this.createGrid();
         this.checkAndHandleMatches();
     },
     
     createGrid: function() {
-        this.destroyClientControls();
+        console.log('Creating grid');
+        this.$.gridContainer.destroyClientControls();
         this.grid = [];
         
         for (var row = 0; row < this.gridSize; row++) {
+            var rowControl = this.$.gridContainer.createComponent({
+                kind: 'enyo.Control',
+                classes: 'grid-row'
+            });
             this.grid[row] = [];
+            
             for (var col = 0; col < this.gridSize; col++) {
                 var gemType = this.getRandomGemType();
-                var gem = this.createComponent({
+                var gem = rowControl.createComponent({
                     kind: 'Gem',
                     row: row,
                     col: col,
-                    gemType: gemType,
-                    classes: 'gem ' + gemType,
-                    ontap: 'handleGemTap'
+                    gemType: gemType
                 });
                 this.grid[row][col] = gem;
             }
         }
-        this.render();
+        console.log('Grid created with dimensions:', {
+            rows: this.gridSize,
+            cols: this.gridSize
+        });
     },
     
     getRandomGemType: function() {
         return this.gemTypes[Math.floor(Math.random() * this.gemTypes.length)];
     },
     
-    handleGemTap: function(inSender, inEvent) {
+    handleGemSelect: function(inSender, inEvent) {
+        console.log('Grid received gem select:', {
+            event: inEvent,
+            sender: inSender,
+            selectedGem: this.selectedGem ? {
+                row: this.selectedGem.row,
+                col: this.selectedGem.col
+            } : null
+        });
+        
+        if (!inEvent || !inEvent.gem) {
+            console.error('Invalid gem select event:', inEvent);
+            return;
+        }
+        
+        var gem = inEvent.gem;
+        
         if (!this.selectedGem) {
-            // First selection
-            this.selectedGem = inSender;
-            inSender.setSelected(true);
+            console.log('First gem selected');
+            this.selectedGem = gem;
+            gem.setSelected(true);
         } else {
-            // Second selection
+            console.log('Second gem selected');
             var firstGem = this.selectedGem;
-            var secondGem = inSender;
+            var secondGem = gem;
             
-            // Check if gems are adjacent
             if (this.areAdjacent(firstGem, secondGem)) {
-                // Swap gems
+                console.log('Gems are adjacent, attempting swap');
                 this.swapGems(firstGem, secondGem);
                 
-                // Check for matches
                 var matches = this.checkForMatches();
+                console.log('Matches found:', matches.length);
                 if (matches.length === 0) {
-                    // If no matches, swap back after a delay
-                    setTimeout(function() {
+                    console.log('No matches, swapping back');
+                    enyo.asyncMethod(this, function() {
                         this.swapGems(firstGem, secondGem);
-                    }.bind(this), 300);
+                    }, 300);
                 } else {
-                    // Handle matches and cascading effects
+                    console.log('Matches found, handling matches');
                     this.handleMatches(matches);
                 }
+            } else {
+                console.log('Gems are not adjacent');
             }
             
-            // Reset selection
             firstGem.setSelected(false);
             this.selectedGem = null;
         }
@@ -118,22 +219,40 @@ enyo.kind({
     areAdjacent: function(gem1, gem2) {
         var rowDiff = Math.abs(gem1.row - gem2.row);
         var colDiff = Math.abs(gem1.col - gem2.col);
-        return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        var isAdjacent = (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        console.log('Checking adjacency:', {
+            gem1: {row: gem1.row, col: gem1.col},
+            gem2: {row: gem2.row, col: gem2.col},
+            isAdjacent: isAdjacent
+        });
+        return isAdjacent;
     },
     
     swapGems: function(gem1, gem2) {
-        // Swap gem types
+        console.log('Swapping gems:', {
+            gem1: {row: gem1.row, col: gem1.col, type: gem1.gemType},
+            gem2: {row: gem2.row, col: gem2.col, type: gem2.gemType}
+        });
+        
+        gem1.startSwapAnimation();
+        gem2.startSwapAnimation();
+        
         var tempType = gem1.gemType;
         gem1.setGemType(gem2.gemType);
         gem2.setGemType(tempType);
         
-        // Update grid array
         this.grid[gem1.row][gem1.col] = gem1;
         this.grid[gem2.row][gem2.col] = gem2;
+        
+        enyo.asyncMethod(this, function() {
+            gem1.endSwapAnimation();
+            gem2.endSwapAnimation();
+        }, 300);
     },
     
     checkForMatches: function() {
-        var matches = []; // Use array instead of Set
+        console.log('Checking for matches');
+        var matches = [];
         
         // Check horizontal matches
         for (var row = 0; row < this.gridSize; row++) {
@@ -143,12 +262,10 @@ enyo.kind({
                 var gem3 = this.grid[row][col + 2];
                 
                 if (gem1.gemType === gem2.gemType && gem2.gemType === gem3.gemType) {
-                    // Add gems if they're not already in matches
                     if (matches.indexOf(gem1) === -1) matches.push(gem1);
                     if (matches.indexOf(gem2) === -1) matches.push(gem2);
                     if (matches.indexOf(gem3) === -1) matches.push(gem3);
                     
-                    // Check for longer matches
                     var nextCol = col + 3;
                     while (nextCol < this.gridSize && this.grid[row][nextCol].gemType === gem1.gemType) {
                         var nextGem = this.grid[row][nextCol];
@@ -167,12 +284,10 @@ enyo.kind({
                 var gem3 = this.grid[row + 2][col];
                 
                 if (gem1.gemType === gem2.gemType && gem2.gemType === gem3.gemType) {
-                    // Add gems if they're not already in matches
                     if (matches.indexOf(gem1) === -1) matches.push(gem1);
                     if (matches.indexOf(gem2) === -1) matches.push(gem2);
                     if (matches.indexOf(gem3) === -1) matches.push(gem3);
                     
-                    // Check for longer matches
                     var nextRow = row + 3;
                     while (nextRow < this.gridSize && this.grid[nextRow][col].gemType === gem1.gemType) {
                         var nextGem = this.grid[nextRow][col];
@@ -183,35 +298,35 @@ enyo.kind({
             }
         }
         
+        console.log('Matches found:', matches.length);
         return matches;
     },
     
     handleMatches: function(matches) {
-        // Play match animation for matched gems
+        console.log('Handling matches:', matches.length);
         matches.forEach(function(gem) {
             gem.playMatchAnimation();
         });
         
-        // Update score
         this.doScoreUpdate({
             matches: matches
         });
         
-        // Replace matched gems with new ones
         matches.forEach(function(gem) {
             gem.setGemType(this.getRandomGemType());
+            gem.startFallAnimation();
         }, this);
         
-        // Check for new matches after a delay
-        setTimeout(function() {
+        enyo.asyncMethod(this, function() {
             var newMatches = this.checkForMatches();
             if (newMatches.length > 0) {
                 this.handleMatches(newMatches);
             }
-        }.bind(this), 600);
+        }, 600);
     },
     
     checkAndHandleMatches: function() {
+        console.log('Checking initial matches');
         var matches = this.checkForMatches();
         if (matches.length > 0) {
             this.handleMatches(matches);
@@ -221,51 +336,27 @@ enyo.kind({
 
 enyo.kind({
     name: 'GameBoard',
-    kind: enyo.Control,
+    kind: 'enyo.Control',
     classes: 'game-board',
     
-    // Game configuration
-    gridSize: 8,
-    gemTypes: ['red', 'blue', 'green', 'yellow', 'purple'],
-    
     components: [
-        {
-            name: 'grid',
-            kind: 'Grid',
-            classes: 'game-grid',
-            gridSize: 8,
-            gemTypes: ['red', 'blue', 'green', 'yellow', 'purple'],
-            onScoreUpdate: 'handleScoreUpdate'
-        },
-        {
-            name: 'score',
-            kind: enyo.Control,
-            content: 'Score: 0',
-            classes: 'score-display'
-        }
+        {name: 'grid', kind: 'Grid', onScoreUpdate: 'handleScoreUpdate'},
+        {name: 'score', kind: 'enyo.Control', classes: 'score-display', content: 'Score: 0'}
     ],
     
     create: function() {
         this.inherited(arguments);
+        console.log('GameBoard created');
         this.score = 0;
     },
     
-    rendered: function() {
-        this.inherited(arguments);
-        this.updateScoreDisplay();
-    },
-    
-    updateScoreDisplay: function() {
-        if (this.$.score) {
-            this.$.score.setContent('Score: ' + this.score);
-        }
-    },
-    
     handleScoreUpdate: function(inSender, inEvent) {
-        // Update score when matches are found
-        if (inEvent.matches) {
+        console.log('Score update received:', inEvent);
+        if (inEvent && inEvent.matches) {
             this.score += inEvent.matches.length * 10;
-            this.updateScoreDisplay();
+            if (this.$.score) {
+                this.$.score.setContent('Score: ' + this.score);
+            }
         }
     }
 }); 
