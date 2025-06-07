@@ -5,13 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Enyo Bejeweled</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="bower_components/enyo/enyo.js"></script>
+    <script src="bower_components/enyo/enyo.js" data-enyo-root="bower_components/enyo"></script>
     <script src="src/kinds.js"></script>
     <script src="src/App.js"></script>
 </head>
 <body>
     <script>
-        new App().renderInto(document.body);
+        enyo.ready(function() {
+            new App().renderInto(document.body);
+        });
     </script>
 </body>
 </html> 
