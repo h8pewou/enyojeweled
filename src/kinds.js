@@ -36,7 +36,7 @@ enyo.kind({
 enyo.kind({
     name: 'Grid',
     kind: enyo.Control,
-    classes: 'grid',
+    classes: 'grid game-grid',
     
     published: {
         gridSize: 8,
@@ -74,6 +74,7 @@ enyo.kind({
                 this.grid[row][col] = gem;
             }
         }
+        this.render();
     },
     
     getRandomGemType: function() {
@@ -132,7 +133,7 @@ enyo.kind({
     },
     
     checkForMatches: function() {
-        var matches = new Set(); // Use Set to avoid duplicate matches
+        var matches = []; // Use array instead of Set
         
         // Check horizontal matches
         for (var row = 0; row < this.gridSize; row++) {
@@ -142,14 +143,16 @@ enyo.kind({
                 var gem3 = this.grid[row][col + 2];
                 
                 if (gem1.gemType === gem2.gemType && gem2.gemType === gem3.gemType) {
-                    matches.add(gem1);
-                    matches.add(gem2);
-                    matches.add(gem3);
+                    // Add gems if they're not already in matches
+                    if (matches.indexOf(gem1) === -1) matches.push(gem1);
+                    if (matches.indexOf(gem2) === -1) matches.push(gem2);
+                    if (matches.indexOf(gem3) === -1) matches.push(gem3);
                     
                     // Check for longer matches
                     var nextCol = col + 3;
                     while (nextCol < this.gridSize && this.grid[row][nextCol].gemType === gem1.gemType) {
-                        matches.add(this.grid[row][nextCol]);
+                        var nextGem = this.grid[row][nextCol];
+                        if (matches.indexOf(nextGem) === -1) matches.push(nextGem);
                         nextCol++;
                     }
                 }
@@ -164,21 +167,23 @@ enyo.kind({
                 var gem3 = this.grid[row + 2][col];
                 
                 if (gem1.gemType === gem2.gemType && gem2.gemType === gem3.gemType) {
-                    matches.add(gem1);
-                    matches.add(gem2);
-                    matches.add(gem3);
+                    // Add gems if they're not already in matches
+                    if (matches.indexOf(gem1) === -1) matches.push(gem1);
+                    if (matches.indexOf(gem2) === -1) matches.push(gem2);
+                    if (matches.indexOf(gem3) === -1) matches.push(gem3);
                     
                     // Check for longer matches
                     var nextRow = row + 3;
                     while (nextRow < this.gridSize && this.grid[nextRow][col].gemType === gem1.gemType) {
-                        matches.add(this.grid[nextRow][col]);
+                        var nextGem = this.grid[nextRow][col];
+                        if (matches.indexOf(nextGem) === -1) matches.push(nextGem);
                         nextRow++;
                     }
                 }
             }
         }
         
-        return Array.from(matches);
+        return matches;
     },
     
     handleMatches: function(matches) {
